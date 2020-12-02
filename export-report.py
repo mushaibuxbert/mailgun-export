@@ -9,6 +9,7 @@ DOMAIN = ''
 EVENT = 'accepted'
 LIMIT = 300
 DATETIME_FORMAT = '%d %B %Y %H:%M:%S -0000'
+TYPE = 'count'
 
 def get_logs(start_date, end_date, next_url=None):
     if next_url:
@@ -22,6 +23,9 @@ def get_logs(start_date, end_date, next_url=None):
             "limit": LIMIT,
             "event": EVENT,
         }
+
+        #params["subject"] = "Welcome to"
+
         logs = requests.get(
             'https://api.mailgun.net/v3/{0}/events'.format(DOMAIN),
             auth=("api", API_KEY),
@@ -31,14 +35,14 @@ def get_logs(start_date, end_date, next_url=None):
 
 def main(argv):
     try:
-        opts, args = getopt.getopt(argv, 'k:s:e:d:ev:l', ['key=', 'start=', 'end=', 'domain=', 'event=', 'limit='])
+        opts, args = getopt.getopt(argv, 'k:s:e:d:ev:l:t', ['key=', 'start=', 'end=', 'domain=', 'event=', 'limit=', 'type='])
     except getopt.GetoptError as err:
         print(err)
         usage()
         sys.exit(2)
 
-    start = datetime.now() - timedelta(2)
-    end = datetime.now() - timedelta(1)
+    start = datetime.now() - timedelta(1)
+    end = datetime.now()
 
     for o, a in opts:
         if o in ("-k", "--key"):
@@ -57,6 +61,9 @@ def main(argv):
         elif o in ("-l", "--limit"):
             global LIMIT
             LIMIT = int(a)
+        elif o in ("-t", "--type"):
+            global TYPE
+            TYPE = a
 
     log_items = []
     current_page = get_logs(start, end)
@@ -67,12 +74,14 @@ def main(argv):
         next_url = current_page.get('paging').get('next', None)
         current_page = get_logs(start, end, next_url=next_url)
 
-    keys = log_items[0].keys()
-    with open('{0}-{1}.csv'.format(DOMAIN, start.strftime('%Y-%M-%d')), 'w') as output_file:
-        dict_writer = csv.DictWriter(output_file, keys)
-        dict_writer.writeheader()
-        dict_writer.writerows(log_items)
-
+    if TYPE == 'csv':
+        keys = log_items[0].keys()
+        with open('{0}-{1}.csv'.format(DOMAIN, datetime.now().strftime('%Y%m%d%H%M%S')), 'w') as output_file:
+            dict_writer = csv.DictWriter(output_file, keys)
+            dict_writer.writeheader()
+            dict_writer.writerows(log_items)
+    else:
+        print('Count is : {0}'.format(len(log_items)))
 
 if __name__ == "__main__":
    main(sys.argv[1:])
